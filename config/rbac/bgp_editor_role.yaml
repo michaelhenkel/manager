@@ -1,0 +1,26 @@
+# permissions to do edit bgps.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bgp-editor-role
+rules:
+- apiGroups:
+  - devicemanager.juniper.net
+  resources:
+  - bgps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - devicemanager.juniper.net
+  resources:
+  - bgps/status
+  verbs:
+  - get
+  - patch
+  - update

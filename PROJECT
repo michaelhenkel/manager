@@ -1,0 +1,13 @@
+domain: juniper.net
+repo: github.com/michaelhenkel/fabricmanager
+resources:
+- group: devicemanager
+  kind: Device
+  version: v1
+- group: devicemanager
+  kind: Interface
+  version: v1
+- group: devicemanager
+  kind: Bgp
+  version: v1
+version: "2"

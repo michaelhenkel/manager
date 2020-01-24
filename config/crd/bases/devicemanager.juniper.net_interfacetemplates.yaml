@@ -1,0 +1,84 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.4
+  creationTimestamp: null
+  name: interfacetemplates.devicemanager.juniper.net
+spec:
+  group: devicemanager.juniper.net
+  names:
+    kind: InterfaceTemplate
+    listKind: InterfaceTemplateList
+    plural: interfacetemplates
+    singular: interfacetemplate
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      description: InterfaceTemplate describes a template for creating copies of a
+        predefined interfaces.
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata'
+          type: object
+        template:
+          description: Template defines the pods that will be created from this Interface
+            template. https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+          properties:
+            metadata:
+              description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata'
+              type: object
+            spec:
+              description: 'Specification of the desired behavior of the pod. More
+                info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status'
+              properties:
+                interfaceIdentifier:
+                  description: InterfaceIdentifier specifies the interface name string
+                  type: string
+                units:
+                  description: Address is an example field of Interface. Edit Interface_types.go
+                    to remove/update
+                  items:
+                    description: Unit is a logical entitiy on an Interface
+                    properties:
+                      addresses:
+                        description: Addresses is a list of addresses
+                        items:
+                          type: string
+                        type: array
+                      id:
+                        description: Id is the identifier of the logical Unit
+                        type: integer
+                    type: object
+                  type: array
+                usedBy:
+                  description: UsedBy is a list of devices using this interface
+                  items:
+                    type: string
+                  type: array
+              type: object
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

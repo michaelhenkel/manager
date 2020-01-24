@@ -1,0 +1,9 @@
+apiVersion: devicemanager.juniper.net/v1
+kind: Device
+metadata:
+  name: device2
+spec:
+  vendor: acme
+  interfaceSelector:
+  - group: group1
+  - group: group2

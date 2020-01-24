@@ -1,0 +1,14 @@
+---
+apiVersion: devicemanager.juniper.net/v1
+kind: Interface
+metadata:
+  name: eth1-group1
+  labels:
+    group: group1
+spec:
+  interfaceIdentifier: eth1
+  units:
+  - name: 0
+    addresses:
+    - 3.1.1.1/24
+    - 3::1/64
