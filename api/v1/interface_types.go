@@ -16,6 +16,12 @@ limitations under the License.
 package v1
 
 import (
+	"crypto/md5"
+	"encoding/json"
+	"fmt"
+
+	"k8s.io/apimachinery/pkg/types"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -115,6 +121,26 @@ type Interface struct {
 	Status InterfaceStatus `json:"status,omitempty"`
 }
 
+// InterfaceReference holds a reference to an interace object
+type InterfaceReference struct {
+	Namespace           string        `json:"namespace,omitempty"`
+	Name                string        `json:"name,omitempty"`
+	InterfaceIdentifier string        `json:"interfaceIdentifier,omitempty"`
+	UID                 types.UID     `json:"uid,omitempty"`
+	CommitStatus        *CommitStatus `json:"commitStatus,omitempty"`
+	ConfigHash          string        `json:"configHash,omitempty"`
+}
+
+func (i *Interface) GetReference() *InterfaceReference {
+	return &InterfaceReference{
+		Name:                i.GetName(),
+		Namespace:           i.GetNamespace(),
+		InterfaceIdentifier: i.Spec.InterfaceIdentifier,
+		UID:                 i.GetUID(),
+		ConfigHash:          i.Hash(),
+	}
+}
+
 // +kubebuilder:object:root=true
 
 // InterfaceList contains a list of Interface
@@ -126,4 +152,11 @@ type InterfaceList struct {
 
 func init() {
 	SchemeBuilder.Register(&Interface{}, &InterfaceList{}, &InterfaceTemplate{}, &InterfaceTemplateList{})
+}
+
+func (i *Interface) Hash() string {
+	arrBytes := []byte{}
+	jsonBytes, _ := json.Marshal(i.Spec)
+	arrBytes = append(arrBytes, jsonBytes...)
+	return fmt.Sprintf("%x", md5.Sum(arrBytes))
 }

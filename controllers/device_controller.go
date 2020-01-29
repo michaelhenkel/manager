@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	ref "k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -76,62 +75,89 @@ func (r *DeviceReconciler) Add(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=devicemanager.juniper.net,resources=devices,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=devicemanager.juniper.net,resources=devices/status,verbs=get;update;patch
 func (r *DeviceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
 	_ = r.Log.WithValues("device", req.NamespacedName)
 	r.Log.Info("Request for Device Controller ", "namespace/name", req.String())
 
-	var device devicemanagerv1.Device
-	if err := r.Get(ctx, req.NamespacedName, &device); err != nil {
-		r.Log.Error(err, "unable to fetch Device")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	var activeInterfaceStatusList []*devicemanagerv1.DeviceInterfaceStatus
-	if len(device.Spec.InterfaceSelector) > 0 {
-		for _, interfaceMap := range device.Spec.InterfaceSelector {
-			labelSelector := labels.SelectorFromSet(interfaceMap)
-			listOps := &client.ListOptions{Namespace: req.Namespace, LabelSelector: labelSelector}
-			list := &devicemanagerv1.InterfaceList{}
-			if err := r.List(context.Background(), list, listOps); err != nil {
-				return ctrl.Result{}, err
-			}
-			for _, interfaceObj := range list.Items {
-				interfaceRef, err := ref.GetReference(r.Scheme, &interfaceObj)
-				if err != nil {
-					r.Log.Error(err, "unable to get Interface reference")
-					return ctrl.Result{}, err
-				}
-				pending := devicemanagerv1.PENDING
-				deviceInterfaceStatus := devicemanagerv1.DeviceInterfaceStatus{
-					InterfaceRef: interfaceRef,
-					CommitStatus: &pending,
-				}
-				activeInterfaceStatusList = append(activeInterfaceStatusList, &deviceInterfaceStatus)
-			}
-		}
-	}
-
-	deviceUpdate := false
-	for _, activeInterfaceStatus := range activeInterfaceStatusList {
-		for _, interfaceStatus := range device.Status.Interfaces {
-			if activeInterfaceStatus.InterfaceRef == interfaceStatus.InterfaceRef {
-				if activeInterfaceStatus.CommitStatus != interfaceStatus.CommitStatus {
-					activeInterfaceStatus.CommitStatus = interfaceStatus.CommitStatus
-					deviceUpdate = true
-				}
-
-			}
-		}
-
-	}
-	if deviceUpdate {
-		device.Status.Interfaces = activeInterfaceStatusList
-		if err := r.Status().Update(ctx, &device); err != nil {
-			r.Log.Error(err, "unable to update Device status")
-			return ctrl.Result{}, err
-		}
-	}
 	return ctrl.Result{}, nil
+}
+
+func (r *DeviceReconciler) setInterfaceFinalizer(interfaceStatus *devicemanagerv1.DeviceInterfaceStatus, deviceName string) error {
+	var deviceInterface devicemanagerv1.Interface
+	if err := r.Get(context.Background(), types.NamespacedName{Name: interfaceStatus.InterfaceRef.Name, Namespace: interfaceStatus.InterfaceRef.Namespace}, &deviceInterface); err != nil {
+		r.Log.Error(err, "unable to fetch Interface")
+		return err
+	}
+
+	if deviceInterface.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, so if it does not have our finalizer,
+		// then lets add the finalizer and update the object. This is equivalent
+		// registering our finalizer.
+		if !containsString(deviceInterface.ObjectMeta.Finalizers, deviceName) {
+			deviceInterface.ObjectMeta.Finalizers = append(deviceInterface.ObjectMeta.Finalizers, deviceName)
+			if err := r.Update(context.Background(), &deviceInterface); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *DeviceReconciler) interfaceDelete(actualInterfaceStatus *devicemanagerv1.DeviceInterfaceStatus, intendedInterfaceStatusList []*devicemanagerv1.DeviceInterfaceStatus) *devicemanagerv1.DeviceInterfaceStatus {
+	interfaceInList := false
+	for _, intendedInterfaceStatus := range intendedInterfaceStatusList {
+		if actualInterfaceStatus.InterfaceRef.UID == intendedInterfaceStatus.InterfaceRef.UID {
+			return nil
+			//interfaceInList = true
+			//break
+		}
+	}
+	if !interfaceInList {
+		pendingDelete := devicemanagerv1.PENDINGDELETE
+		actualInterfaceStatus.InterfaceRef.CommitStatus = &pendingDelete
+		return actualInterfaceStatus
+		//intendedInterfaceStatusList = append(intendedInterfaceStatusList, actualInterfaceStatus)
+		//fmt.Printf("blabla")
+	}
+
+	return nil
+}
+
+func (r *DeviceReconciler) interfaceCreateUpdate(intendedInterfaceStatus *devicemanagerv1.DeviceInterfaceStatus, actualInterfaceStatusList []*devicemanagerv1.DeviceInterfaceStatus) error {
+	interfaceInList := false
+	for _, actualInterfaceStatus := range actualInterfaceStatusList {
+		if actualInterfaceStatus.InterfaceRef.UID == intendedInterfaceStatus.InterfaceRef.UID {
+			interfaceInList = true
+			actualInterfaceObj, err := r.getInterface(actualInterfaceStatus.InterfaceRef.Name, actualInterfaceStatus.InterfaceRef.Namespace)
+			if err != nil {
+				return err
+			}
+			intendedInterfaceObj, err := r.getInterface(intendedInterfaceStatus.InterfaceRef.Name, intendedInterfaceStatus.InterfaceRef.Namespace)
+			if err != nil {
+				return err
+			}
+			if !reflect.DeepEqual(actualInterfaceObj.Spec, intendedInterfaceObj.Spec) {
+				pendingUpdate := devicemanagerv1.PENDINGUPDATE
+				intendedInterfaceStatus.InterfaceRef.CommitStatus = &pendingUpdate
+			} else {
+				intendedInterfaceStatus.InterfaceRef.CommitStatus = actualInterfaceStatus.InterfaceRef.CommitStatus
+			}
+			return nil
+		}
+	}
+	if !interfaceInList {
+		pendingCreate := devicemanagerv1.PENDINGCREATE
+		intendedInterfaceStatus.InterfaceRef.CommitStatus = &pendingCreate
+	}
+	return nil
 }
 
 var (
@@ -157,6 +183,14 @@ func (r *DeviceReconciler) InterfaceChange() predicate.Funcs {
 				return true
 			}
 			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			//return true
+			deviceInterface, ok := e.Object.(*devicemanagerv1.Interface)
+			if !ok {
+				r.Log.Info("type conversion mismatch ", "type", deviceInterface.GetObjectKind())
+			}
+			return true
 		},
 	}
 }
@@ -228,12 +262,10 @@ func (r *DeviceReconciler) resourceHandler() handler.Funcs {
 						listOps := &client.ListOptions{Namespace: e.Meta.GetNamespace(), LabelSelector: labelSelector}
 						list := &devicemanagerv1.InterfaceList{}
 						if err := r.List(context.Background(), list, listOps); err == nil {
-							if len(list.Items) > 0 {
-								q.Add(ctrl.Request{NamespacedName: types.NamespacedName{
-									Name:      app.GetName(),
-									Namespace: e.Meta.GetNamespace(),
-								}})
-							}
+							q.Add(ctrl.Request{NamespacedName: types.NamespacedName{
+								Name:      app.GetName(),
+								Namespace: app.GetNamespace(),
+							}})
 						}
 					}
 				}

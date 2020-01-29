@@ -1,0 +1,66 @@
+  
+// Copyright 2015 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+syntax = "proto3";
+
+package protos;
+
+// The greeting service definition.
+service Interface {
+  rpc Create(Intf) returns (CreateResult) {}
+  rpc Update(Intf) returns (UpdateResult) {}
+  rpc Delete(Intf) returns (DeleteResult) {}
+  rpc Read(Intf) returns (ReadResult) {}
+}
+
+message CreateResult {
+    bool result = 1;
+}
+
+message UpdateResult {
+    bool result = 1;
+}
+
+message DeleteResult {
+    bool result = 1;
+}
+
+message ReadResult {
+    bool result = 1;
+}
+
+message Intf {
+    string Name = 1;
+    string InterfaceIdentifier = 2;
+    repeated Unit Units = 3;
+}
+
+message DeviceInterfaceStatus{
+    InterfaceRef InterfaceReference = 1;
+    string CommitStatus = 2;
+}
+
+message InterfaceRef {
+    string Namespace = 1;
+    string Name = 2;
+    string InterfaceIdentifier = 3;
+    string UID = 4;
+}
+
+message Unit {
+    int32 ID = 1;
+    repeated string Addresses = 2;
+}

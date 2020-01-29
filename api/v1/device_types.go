@@ -16,7 +16,6 @@ limitations under the License.
 package v1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,21 +40,36 @@ const (
 	SUCCESS CommitStatus = "success"
 	//FAILED means config failed
 	FAILED CommitStatus = "failed"
-	//PENDING means config commit is in progress
-	PENDING CommitStatus = "pending"
+	//PENDINGCREATE means config commit is in progress to create a new resource
+	PENDINGCREATE CommitStatus = "pendingCreation"
+	//PENDINGDELETE means config commit is in progress to delete a resource
+	PENDINGDELETE CommitStatus = "pendingDeletion"
+	//PENDINGUPDATE means config commit is in progress to change a resource
+	PENDINGUPDATE CommitStatus = "pendingUpdate"
+	//UPDATESUCCESS means config is correctly applied
+	UPDATESUCCESS CommitStatus = "successUpdate"
+	//CREATESUCCESS means config is correctly applied
+	CREATESUCCESS CommitStatus = "successCreate"
+	//DELETESUCCESS means config is correctly applied
+	DELETESUCCESS CommitStatus = "successDelete"
+	//UPDATEFAIL means config is correctly applied
+	UPDATEFAIL CommitStatus = "failUpdate"
+	//CREATEFAIL means config is correctly applied
+	CREATEFAIL CommitStatus = "failCreate"
+	//DELETEFAIL means config is correctly applied
+	DELETEFAIL CommitStatus = "failDelete"
 )
 
 // DeviceStatus defines the observed state of Device
 type DeviceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Interfaces []*DeviceInterfaceStatus `json:"interfaces,omitempty"`
+	Interfaces map[string]*DeviceInterfaceStatus `json:"interfaces,omitempty"`
 }
 
 // DeviceInterfaceStatus defines the status of an interface on the device
 type DeviceInterfaceStatus struct {
-	InterfaceRef *corev1.ObjectReference `json:"interfaceRef,omitempty"`
-	CommitStatus *CommitStatus           `json:"commitStatus,omitempty"`
+	InterfaceRef *InterfaceReference `json:"interfaceRef,omitempty"`
 }
 
 // +kubebuilder:object:root=true

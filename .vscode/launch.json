@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "/Users/mhenkel/go/src/github.com/michaelhenkel/fabricmanager/runner/main.go",
-            "args": ["-namespace","default"]
+            "args": ["-devicename","device1"]
         },
         {
             "name": "Launch",

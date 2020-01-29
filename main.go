@@ -64,24 +64,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.DeviceReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Device"),
-		Scheme: mgr.GetScheme(),
-	}).Add(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Device")
-		os.Exit(1)
-	}
 	/*
 		if err = (&controllers.DeviceReconciler{
 			Client: mgr.GetClient(),
 			Log:    ctrl.Log.WithName("controllers").WithName("Device"),
 			Scheme: mgr.GetScheme(),
-		}).SetupWithManager(mgr); err != nil {
+		}).Add(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "Device")
 			os.Exit(1)
 		}
 	*/
+
 	if err = (&controllers.InterfaceReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Interface"),
