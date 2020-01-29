@@ -36,8 +36,8 @@ type DeviceSpec struct {
 type CommitStatus string
 
 const (
-	//SUCCESS means config is correctly applied
-	SUCCESS CommitStatus = "success"
+	//COMMITSUCCESS means config is correctly applied
+	COMMITSUCCESS CommitStatus = "successCommit"
 	//FAILED means config failed
 	FAILED CommitStatus = "failed"
 	//PENDINGCREATE means config commit is in progress to create a new resource

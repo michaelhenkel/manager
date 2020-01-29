@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"reflect"
-	"time"
 
 	typesv1 "github.com/michaelhenkel/fabricmanager/api/v1"
 )
@@ -60,7 +59,7 @@ func (p *Device) ConfigureInterfaces(interfaceList []*typesv1.Interface) map[*ty
 		var commitStatus typesv1.CommitStatus
 		actIntf := &Interface{}
 		if err := actIntf.Create(intendedIntf, p); err == nil {
-			commitStatus = typesv1.CREATESUCCESS
+			commitStatus = typesv1.COMMITSUCCESS
 			deviceMap[p.GetName()] = p
 		} else {
 			commitStatus = typesv1.CREATEFAIL
@@ -74,7 +73,7 @@ func (p *Device) ConfigureInterfaces(interfaceList []*typesv1.Interface) map[*ty
 		var commitStatus typesv1.CommitStatus
 		actIntf := &Interface{}
 		if err := actIntf.Update(intendedIntf, p); err == nil {
-			commitStatus = typesv1.UPDATESUCCESS
+			commitStatus = typesv1.COMMITSUCCESS
 			deviceMap[p.GetName()] = p
 		} else {
 			commitStatus = typesv1.UPDATEFAIL
@@ -100,6 +99,13 @@ func (p *Device) ConfigureInterfaces(interfaceList []*typesv1.Interface) map[*ty
 		for _, deleteIdx := range deleteIdx {
 			p.Interfaces = append(p.Interfaces[:deleteIdx], p.Interfaces[deleteIdx+1:]...)
 			deleteIdx--
+		}
+	}
+
+	for _, intf := range interfaceList {
+		if _, ok := interfaceStatusMap[intf]; !ok {
+			commitStatus := typesv1.COMMITSUCCESS
+			interfaceStatusMap[intf] = &commitStatus
 		}
 	}
 	return interfaceStatusMap
@@ -199,54 +205,3 @@ func (i *Interface) Delete(device *Device) error {
 }
 
 var deviceMap = make(map[string]*Device)
-
-func InterfaceHandler(activeInterface *typesv1.Interface, commitStatus *typesv1.CommitStatus) error {
-	n := 2
-	fmt.Printf("will finish in %d seconds \n", n)
-	if *commitStatus != typesv1.SUCCESS {
-		var action string
-		switch *commitStatus {
-		case typesv1.PENDINGDELETE:
-			action = "delete"
-			fmt.Printf("%s interface %s\n", action, activeInterface.Spec.InterfaceIdentifier)
-		case typesv1.PENDINGCREATE:
-			action = "set"
-			for _, unit := range activeInterface.Spec.Units {
-				for _, address := range unit.Addresses {
-					ip, _, err := net.ParseCIDR(address)
-					if err != nil {
-						return err
-					}
-					var family string
-					if ip.To4() != nil {
-						family = "inet"
-					} else {
-						family = "inet6"
-					}
-					fmt.Printf("%s interface %s unit %d family %s address %s\n", action, activeInterface.Spec.InterfaceIdentifier, unit.ID, family, address)
-				}
-			}
-		case typesv1.PENDINGUPDATE:
-			action = "set"
-			for _, unit := range activeInterface.Spec.Units {
-				for _, address := range unit.Addresses {
-					ip, _, err := net.ParseCIDR(address)
-					if err != nil {
-						return err
-					}
-					var family string
-					if ip.To4() != nil {
-						family = "inet"
-					} else {
-						family = "inet6"
-					}
-					fmt.Printf("%s interface %s unit %d family %s address %s\n", action, activeInterface.Spec.InterfaceIdentifier, unit.ID, family, address)
-				}
-			}
-		}
-
-		time.Sleep(time.Duration(n) * time.Second)
-		fmt.Println("done with transformation")
-	}
-	return nil
-}

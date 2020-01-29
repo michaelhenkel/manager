@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-logr/logr"
 	typesv1 "github.com/michaelhenkel/fabricmanager/api/v1"
+	nbc "github.com/michaelhenkel/fabricmanager/nbc"
+	"github.com/michaelhenkel/fabricmanager/runner/transformer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -87,15 +89,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	c := nbc.New()
+	//configChannel := make(chan *typesv1.Device, 5)
 	if err = (&DeviceReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Device"),
-		Scheme: mgr.GetScheme(),
+		Client:  mgr.GetClient(),
+		Log:     ctrl.Log.WithName("controllers").WithName("Device"),
+		Scheme:  mgr.GetScheme(),
+		Channel: c,
 	}).Add(mgr, *deviceNamePtr, *namespacePtr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Device")
 		os.Exit(1)
 	}
 	setupLog.Info("Started controller", "controller", *deviceNamePtr)
+
+	go transformer.Transform(c, mgr.GetClient())
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		fmt.Println(err)
@@ -107,8 +114,9 @@ func main() {
 // DeviceReconciler reconciles a Device object
 type DeviceReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log     logr.Logger
+	Scheme  *runtime.Scheme
+	Channel *nbc.NonBlockingChan
 }
 
 // Add adds the controller to the manager
@@ -332,7 +340,7 @@ func (r *DeviceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, err
 		}
 	}
-
+	r.Channel.Send <- &device
 	//transformer.Transform(&device, r.Client)
 	return ctrl.Result{}, nil
 }
